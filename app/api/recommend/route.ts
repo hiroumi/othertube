@@ -19,7 +19,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ recommendations: [] });
     }
 
-    // AI スコアリング: Anthropic → Gemini → シンプルスコアリング
+    // AI スコアリング: Vertex AI → Anthropic → Gemini → シンプルスコアリング
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64 && filteredVideos.length >= 3) {
+      try {
+        const { categorizeAndScoreVideos } = await import("@/lib/vertex");
+        const recommendations: RecommendedVideo[] = await categorizeAndScoreVideos(
+          interestProfile,
+          filteredVideos
+        );
+        return NextResponse.json({ recommendations });
+      } catch {
+        // Vertex AI失敗 → Anthropicへ
+      }
+    }
+
     if (process.env.ANTHROPIC_API_KEY && filteredVideos.length >= 3) {
       try {
         const { categorizeAndScoreVideos } = await import("@/lib/anthropic");
@@ -42,20 +55,7 @@ export async function POST(req: NextRequest) {
         );
         return NextResponse.json({ recommendations });
       } catch {
-        // Gemini失敗 → Vertex AIへ
-      }
-    }
-
-    if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64 && filteredVideos.length >= 3) {
-      try {
-        const { categorizeAndScoreVideos } = await import("@/lib/vertex");
-        const recommendations: RecommendedVideo[] = await categorizeAndScoreVideos(
-          interestProfile,
-          filteredVideos
-        );
-        return NextResponse.json({ recommendations });
-      } catch {
-        // Vertex AI失敗 → シンプルスコアリングへ
+        // Gemini失敗 → シンプルスコアリングへ
       }
     }
 

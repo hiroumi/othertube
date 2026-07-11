@@ -57,7 +57,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // AI分析を試みる: Anthropic → Gemini → featured/generic fallback
+    // AI分析を試みる: Vertex AI → Anthropic → Gemini AI Studio → fallback
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64) {
+      try {
+        const { analyzeProfile } = await import("@/lib/vertex");
+        const interestProfile = await analyzeProfile(profile);
+        void saveHistory(profile, interestProfile);
+        return NextResponse.json({ interestProfile });
+      } catch (err) {
+        console.error("Vertex AI error:", err instanceof Error ? err.message : err);
+      }
+    }
+
     if (process.env.ANTHROPIC_API_KEY) {
       try {
         const { analyzeProfile } = await import("@/lib/anthropic");
@@ -77,17 +88,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ interestProfile });
       } catch (err) {
         console.error("Gemini API error:", err instanceof Error ? err.message : err);
-      }
-    }
-
-    if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64) {
-      try {
-        const { analyzeProfile } = await import("@/lib/vertex");
-        const interestProfile = await analyzeProfile(profile);
-        void saveHistory(profile, interestProfile);
-        return NextResponse.json({ interestProfile });
-      } catch (err) {
-        console.error("Vertex AI error:", err instanceof Error ? err.message : err);
       }
     }
 
