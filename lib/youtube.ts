@@ -59,8 +59,7 @@ export async function searchYouTubeVideos(
       const data: YouTubeApiResponse = await res.json();
 
       if (!res.ok) {
-        console.error("YouTube API error:", data.error?.message);
-        continue;
+        throw new Error(`YouTube API ${res.status}: ${data.error?.message ?? "unknown error"}`);
       }
 
       for (const item of data.items ?? []) {
