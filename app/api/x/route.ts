@@ -3,13 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as { username?: string };
-    const username = body.username?.trim();
+    const raw = body.username?.trim();
 
-    if (!username) {
+    if (!raw) {
       return NextResponse.json({ error: "ユーザー名が指定されていません。" }, { status: 400 });
     }
 
-    const { getCachedProfile, setCachedProfile } = await import("@/lib/cache");
+    const { normalizeUsername, getCachedProfile, setCachedProfile } = await import("@/lib/cache");
+    const username = normalizeUsername(raw);
 
     // L1（メモリ）→ L2（Supabase）の順にキャッシュを確認
     const cached = await getCachedProfile(username);

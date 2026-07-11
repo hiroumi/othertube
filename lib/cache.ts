@@ -1,10 +1,22 @@
 import type { XProfile } from "./twitter";
 
-const TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const TTL_MS = 24 * 60 * 60 * 1000;
+
+// ---------------------------------------------------------------------------
+// Username normalization
+// @10000nabe / https://x.com/10000nabe / 10000nabe → "10000nabe"
+// ---------------------------------------------------------------------------
+
+export function normalizeUsername(raw: string): string {
+  const urlMatch = raw.match(/(?:x\.com|twitter\.com)\/([A-Za-z0-9_]+)/);
+  if (urlMatch) return urlMatch[1].toLowerCase();
+  return raw.replace(/^@/, "").replace(/\/$/, "").trim().toLowerCase();
+}
 
 // ---------------------------------------------------------------------------
 // L1: In-memory cache
-// Module-level Map persists across requests on the same warm serverless instance
+// "あればラッキー" 程度。Vercelの同一ウォームインスタンス内のみ有効。
+// L2 Supabase が実質的な正規キャッシュ。
 // ---------------------------------------------------------------------------
 
 interface MemEntry {
@@ -14,38 +26,39 @@ interface MemEntry {
 
 const memCache = new Map<string, MemEntry>();
 
-function cacheKey(username: string) {
-  return username.toLowerCase();
-}
-
 export function getMemCache(username: string): XProfile | null {
-  const entry = memCache.get(cacheKey(username));
+  const key = normalizeUsername(username);
+  const entry = memCache.get(key);
   if (!entry) return null;
   if (Date.now() - entry.cachedAt > TTL_MS) {
-    memCache.delete(cacheKey(username));
+    memCache.delete(key);
     return null;
   }
   return entry.profile;
 }
 
 export function setMemCache(username: string, profile: XProfile): void {
-  memCache.set(cacheKey(username), { profile, cachedAt: Date.now() });
+  memCache.set(normalizeUsername(username), { profile, cachedAt: Date.now() });
 }
 
 // ---------------------------------------------------------------------------
-// L2: Supabase cache (optional — activated only when env vars are present)
+// L2: Supabase cache
+// SUPABASE_SERVICE_ROLE_KEY はサーバー専用（NEXT_PUBLIC_ 禁止）。
+// RLSを回避できる強いキーのため、絶対にブラウザへ渡さない。
 //
-// Required table (run once in Supabase SQL editor):
+// 必要なテーブル（Supabase SQL Editor で一度だけ実行）:
 //   create table x_profile_cache (
-//     username text primary key,
-//     profile  jsonb not null,
+//     username  text primary key,
+//     profile   jsonb not null,
 //     cached_at timestamptz not null default now()
 //   );
+//   create index x_profile_cache_cached_at_idx
+//     on x_profile_cache (cached_at);
 // ---------------------------------------------------------------------------
 
 function getSupabaseConfig(): { url: string; key: string } | null {
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   return url && key ? { url, key } : null;
 }
 
@@ -55,19 +68,20 @@ export async function getSupabaseCache(username: string): Promise<XProfile | nul
 
   try {
     const { createClient } = await import("@supabase/supabase-js");
-    const supabase = createClient(config.url, config.key);
+    const supabase = createClient(config.url, config.key, {
+      auth: { persistSession: false },
+    });
+
+    const cutoff = new Date(Date.now() - TTL_MS).toISOString();
 
     const { data, error } = await supabase
       .from("x_profile_cache")
       .select("profile, cached_at")
-      .eq("username", cacheKey(username))
+      .eq("username", normalizeUsername(username))
+      .gte("cached_at", cutoff)
       .maybeSingle();
 
     if (error || !data) return null;
-
-    const age = Date.now() - new Date(data.cached_at as string).getTime();
-    if (age > TTL_MS) return null;
-
     return data.profile as XProfile;
   } catch {
     return null;
@@ -80,11 +94,13 @@ export async function setSupabaseCache(username: string, profile: XProfile): Pro
 
   try {
     const { createClient } = await import("@supabase/supabase-js");
-    const supabase = createClient(config.url, config.key);
+    const supabase = createClient(config.url, config.key, {
+      auth: { persistSession: false },
+    });
 
     await supabase.from("x_profile_cache").upsert(
       {
-        username: cacheKey(username),
+        username: normalizeUsername(username),
         profile,
         cached_at: new Date().toISOString(),
       },
@@ -97,10 +113,20 @@ export async function setSupabaseCache(username: string, profile: XProfile): Pro
 
 // ---------------------------------------------------------------------------
 // Unified helpers
+// L1（メモリ）→ L2（Supabase）→ X API の順で使う
 // ---------------------------------------------------------------------------
 
 export async function getCachedProfile(username: string): Promise<XProfile | null> {
-  return getMemCache(username) ?? (await getSupabaseCache(username));
+  const mem = getMemCache(username);
+  if (mem) return mem;
+
+  const db = await getSupabaseCache(username);
+  if (db) {
+    setMemCache(username, db); // L2ヒット時はL1にも保存
+    return db;
+  }
+
+  return null;
 }
 
 export async function setCachedProfile(username: string, profile: XProfile): Promise<void> {
