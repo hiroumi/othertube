@@ -80,6 +80,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64) {
+      try {
+        const { analyzeProfile } = await import("@/lib/vertex");
+        const interestProfile = await analyzeProfile(profile);
+        void saveHistory(profile, interestProfile);
+        return NextResponse.json({ interestProfile });
+      } catch (err) {
+        console.error("Vertex AI error:", err instanceof Error ? err.message : err);
+      }
+    }
+
     // どのAI APIも使えない場合 → featured profile or smart fallback
     const username = profile.username.toLowerCase().replace(/^@/, "");
     const featuredProfile = FEATURED_INTEREST_PROFILES[username];
