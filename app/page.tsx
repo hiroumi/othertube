@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Play } from "lucide-react";
 import AccountInputForm from "@/components/AccountInputForm";
 import SampleProfiles from "@/components/SampleProfiles";
+import FeaturedProfiles, { FEATURED_USERS } from "@/components/FeaturedProfiles";
 import AgentProgress from "@/components/AgentProgress";
 import Disclaimer from "@/components/Disclaimer";
 import type { SourceProfile, AnalysisResult } from "@/lib/types";
@@ -16,6 +17,17 @@ export default function HomePage() {
   const [step, setStep] = useState(0);
   const [error, setError] = useState("");
   const [forceShowManual, setForceShowManual] = useState(false);
+
+  // ページロード時におすすめユーザーのX APIをバックグラウンドでキャッシュウォーム
+  useEffect(() => {
+    FEATURED_USERS.forEach(({ username }) => {
+      fetch("/api/x", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username }),
+      }).catch(() => {});
+    });
+  }, []);
 
   async function runAnalysis(profile: SourceProfile) {
     setIsLoading(true);
@@ -257,6 +269,17 @@ export default function HomePage() {
                     </div>
                     <div className="relative flex justify-center">
                       <span className="bg-white px-3 text-xs text-gray-400">または</span>
+                    </div>
+                  </div>
+
+                  <FeaturedProfiles onSelect={runAnalysis} isLoading={isLoading} />
+
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-gray-200" />
+                    </div>
+                    <div className="relative flex justify-center">
+                      <span className="bg-white px-3 text-xs text-gray-400">またはサンプルで試す</span>
                     </div>
                   </div>
 
