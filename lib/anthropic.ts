@@ -6,7 +6,15 @@ const client = new Anthropic({
 });
 
 export async function analyzeProfile(profile: SourceProfile): Promise<InterestProfile> {
-  const postsText = profile.posts.map((p, i) => `${i + 1}. ${p}`).join("\n");
+  const effectivePosts = profile.posts.length > 0
+    ? profile.posts
+    : profile.bio
+    ? [profile.bio]
+    : [];
+
+  const postsText = effectivePosts.length > 0
+    ? effectivePosts.map((p, i) => `${i + 1}. ${p}`).join("\n")
+    : "(投稿情報なし — プロフィール情報のみで推定)";
 
   const prompt = `You are analyzing a person's public X (Twitter) profile and posts to understand their interests and perspective.
 

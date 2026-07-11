@@ -7,8 +7,12 @@ export async function POST(req: NextRequest) {
     const body = (await req.json()) as { profile: SourceProfile };
     const { profile } = body;
 
-    if (!profile || profile.posts.length === 0) {
-      return NextResponse.json({ error: "投稿内容が空です。" }, { status: 400 });
+    if (!profile) {
+      return NextResponse.json({ error: "プロフィールが指定されていません。" }, { status: 400 });
+    }
+
+    if (profile.posts.length === 0 && !profile.bio?.trim()) {
+      return NextResponse.json({ error: "分析できる情報がありません。投稿やプロフィール情報が必要です。" }, { status: 400 });
     }
 
     // サンプルプロフィールの場合は事前定義データを返す

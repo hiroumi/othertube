@@ -48,12 +48,20 @@ export async function fetchXProfile(username: string): Promise<XProfile> {
   if (tweetsRes.ok) {
     const tweetsData = (await tweetsRes.json()) as { data?: XTweet[] };
     posts = (tweetsData.data ?? []).map((t) => t.text);
+  } else {
+    console.warn(`X tweets fetch failed: ${tweetsRes.status} for @${username}`);
+  }
+
+  // ツイートが取得できなかった場合はbioをフォールバックとして使用
+  const bio = user.description ?? "";
+  if (posts.length === 0 && bio) {
+    posts = [bio];
   }
 
   return {
     username: user.username,
     displayName: user.name,
-    bio: user.description ?? "",
+    bio,
     posts,
   };
 }
