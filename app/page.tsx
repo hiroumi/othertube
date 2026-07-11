@@ -81,9 +81,16 @@ export default function HomePage() {
       });
 
       if (!analyzeRes.ok) {
-        throw new Error("プロフィール分析に失敗しました。");
+        const errBody = await analyzeRes.json().catch(() => ({}));
+        throw new Error(
+          (errBody as { error?: string }).error ?? "プロフィール分析に失敗しました。"
+        );
       }
-      const { interestProfile } = await analyzeRes.json();
+      const analyzeData = await analyzeRes.json();
+      if (analyzeData.anthropicError) {
+        console.warn("Anthropic fallback:", analyzeData.anthropicError);
+      }
+      const { interestProfile } = analyzeData;
 
       // Step 3: YouTube検索プラン
       setStep(3);
