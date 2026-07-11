@@ -27,9 +27,13 @@ async function generate(prompt: string): Promise<string> {
       body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }] }),
     });
     if (res.ok) {
-      type R = { candidates: Array<{ content: { parts: Array<{ text: string }> } }> };
+      type Part = { text?: string; thought?: boolean };
+      type R = { candidates: Array<{ content: { parts: Array<Part> } }> };
       const data = (await res.json()) as R;
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+      const parts = data.candidates?.[0]?.content?.parts ?? [];
+      // Skip thinking parts (thought: true) and get the actual response text
+      const textPart = parts.find((p) => !p.thought && p.text) ?? parts[parts.length - 1];
+      const text = textPart?.text ?? "";
       if (text) return text;
       lastError = new Error("Empty response");
     } else {
