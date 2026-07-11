@@ -23,12 +23,37 @@ export async function GET() {
     results["vertex_token"] = `❌ ${e instanceof Error ? e.message : String(e)}`;
   }
 
-  // Direct REST call to Vertex AI
+  // List available Gemini models in Vertex AI
   if (vertexToken) {
-    const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash-002", "gemini-1.5-flash"];
-    for (const modelName of modelsToTry) {
+    try {
+      const listUrl = `https://us-central1-aiplatform.googleapis.com/v1/publishers/google/models?pageSize=5`;
+      const listRes = await fetch(listUrl, {
+        headers: { Authorization: `Bearer ${vertexToken}` },
+      });
+      if (listRes.ok) {
+        type M = { publisherModels?: Array<{ name: string }> };
+        const data = (await listRes.json()) as M;
+        const names = (data.publisherModels ?? []).map((m) => m.name.split("/").pop()).join(", ");
+        results["available_models"] = names || "(none listed)";
+      } else {
+        const err = await listRes.text();
+        results["available_models"] = `❌ ${listRes.status}: ${err.slice(0, 120)}`;
+      }
+    } catch (e) {
+      results["available_models"] = `❌ ${e instanceof Error ? e.message.slice(0, 80) : String(e)}`;
+    }
+
+    // Try different regions and model names
+    const attempts = [
+      { region: "us-central1", model: "gemini-2.0-flash" },
+      { region: "us-east4",    model: "gemini-2.0-flash" },
+      { region: "us-central1", model: "gemini-1.5-flash" },
+      { region: "us-central1", model: "gemini-1.5-flash-002" },
+    ];
+    for (const { region, model } of attempts) {
+      const key = `${region}/${model}`;
       try {
-        const url = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/${modelName}:generateContent`;
+        const url = `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/google/models/${model}:generateContent`;
         const res = await fetch(url, {
           method: "POST",
           headers: { Authorization: `Bearer ${vertexToken}`, "Content-Type": "application/json" },
@@ -38,14 +63,14 @@ export async function GET() {
           type R = { candidates: Array<{ content: { parts: Array<{ text: string }> } }> };
           const data = (await res.json()) as R;
           const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-          results[`vertex_rest_${modelName}`] = `✅ ${text.trim().slice(0, 20)}`;
+          results[key] = `✅ ${text.trim().slice(0, 20)}`;
           break;
         } else {
           const err = await res.text();
-          results[`vertex_rest_${modelName}`] = `❌ ${res.status}: ${err.slice(0, 120)}`;
+          results[key] = `❌ ${res.status}: ${err.slice(0, 100)}`;
         }
       } catch (e) {
-        results[`vertex_rest_${modelName}`] = `❌ ${e instanceof Error ? e.message.slice(0, 80) : String(e)}`;
+        results[key] = `❌ ${e instanceof Error ? e.message.slice(0, 60) : String(e)}`;
       }
     }
   }
