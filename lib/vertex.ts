@@ -1,7 +1,7 @@
 import { VertexAI } from "@google-cloud/vertexai";
 import type { SourceProfile, InterestProfile, YouTubeVideo, RecommendedVideo, RecommendationCategory } from "./types";
 
-const VERTEX_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash-002", "gemini-1.5-flash"];
+const VERTEX_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash-002"];
 
 function getVertexAI() {
   const base64 = process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64;

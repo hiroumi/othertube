@@ -61,9 +61,9 @@ export async function GET() {
 
     // Try different regions and model names
     const attempts = [
-      { region: "us-central1", model: "gemini-2.0-flash" },
-      { region: "us-east4",    model: "gemini-2.0-flash" },
-      { region: "us-central1", model: "gemini-1.5-flash" },
+      { region: "us-central1", model: "gemini-2.5-flash" },
+      { region: "us-central1", model: "gemini-2.5-flash-lite" },
+      { region: "us-east4",    model: "gemini-2.5-flash" },
       { region: "us-central1", model: "gemini-1.5-flash-002" },
     ];
     for (const { region, model } of attempts) {
