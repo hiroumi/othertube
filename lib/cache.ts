@@ -201,6 +201,60 @@ export async function getRecentSearches(
 }
 
 // ---------------------------------------------------------------------------
+// YouTube search cache (youtube_cache table)
+// クォータ節約のため、同じクエリの検索結果を24時間キャッシュする。
+//
+// Supabase SQL Editor で一度だけ実行:
+//   create table youtube_cache (
+//     id         bigserial primary key,
+//     query_key  text not null unique,
+//     videos     jsonb not null,
+//     created_at timestamptz not null default now()
+//   );
+//   create index youtube_cache_created_at_idx on youtube_cache (created_at desc);
+// ---------------------------------------------------------------------------
+
+export async function getCachedYouTubeVideos(queryKey: string): Promise<unknown[] | null> {
+  const config = getSupabaseConfig();
+  if (!config) return null;
+
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(config.url, config.key, { auth: { persistSession: false } });
+    const cutoff = new Date(Date.now() - TTL_MS).toISOString();
+
+    const { data, error } = await supabase
+      .from("youtube_cache")
+      .select("videos")
+      .eq("query_key", queryKey)
+      .gte("created_at", cutoff)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return data.videos as unknown[];
+  } catch {
+    return null;
+  }
+}
+
+export async function setCachedYouTubeVideos(queryKey: string, videos: unknown[]): Promise<void> {
+  const config = getSupabaseConfig();
+  if (!config) return;
+
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(config.url, config.key, { auth: { persistSession: false } });
+
+    await supabase.from("youtube_cache").upsert(
+      { query_key: queryKey, videos, created_at: new Date().toISOString() },
+      { onConflict: "query_key" }
+    );
+  } catch {
+    // non-critical
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Unified helpers
 // Supabase が設定されている場合は正本（source of truth）として扱う。
 // L1（メモリ）は Supabase 不在時の補助のみ。

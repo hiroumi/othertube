@@ -10,6 +10,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ videos: [], debug: "no_queries" });
     }
 
+    // Cache key: sorted queries joined so order doesn't matter
+    const cacheKey = [...queries].sort().join("|");
+
+    const { getCachedYouTubeVideos, setCachedYouTubeVideos } = await import("@/lib/cache");
+
+    const cached = await getCachedYouTubeVideos(cacheKey);
+    if (cached && cached.length > 0) {
+      return NextResponse.json({ videos: cached, cached: true });
+    }
+
     if (!process.env.YOUTUBE_API_KEY) {
       return NextResponse.json({ videos: [], fallback: true, debug: "no_api_key" });
     }
@@ -20,6 +30,9 @@ export async function POST(req: NextRequest) {
     if (videos.length === 0) {
       return NextResponse.json({ videos: [], debug: `empty_results_for: ${queries[0]}` });
     }
+
+    // Save to cache (non-blocking)
+    setCachedYouTubeVideos(cacheKey, videos).catch(() => {});
 
     return NextResponse.json({ videos });
   } catch (err) {
