@@ -39,9 +39,9 @@ export function scoreAndCategorizeVideos(
     return { ...video, category, reason, relevanceScore: rel, serendipityScore: ser };
   });
 
-  const core = scored.filter((v) => v.category === "core").slice(0, 3);
-  const adjacent = scored.filter((v) => v.category === "adjacent").slice(0, 3);
-  const opposite = scored.filter((v) => v.category === "opposite").slice(0, 3);
+  const core = scored.filter((v) => v.category === "core").slice(0, 10);
+  const adjacent = scored.filter((v) => v.category === "adjacent").slice(0, 10);
+  const opposite = scored.filter((v) => v.category === "opposite").slice(0, 10);
 
   return [...core, ...adjacent, ...opposite];
 }

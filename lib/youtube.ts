@@ -31,7 +31,7 @@ export async function searchYouTubeVideos(queries: string[]): Promise<YouTubeVid
       url.searchParams.set("part", "snippet");
       url.searchParams.set("q", query);
       url.searchParams.set("type", "video");
-      url.searchParams.set("maxResults", "6");
+      url.searchParams.set("maxResults", "10");
       url.searchParams.set("relevanceLanguage", "ja");
       url.searchParams.set("key", apiKey);
 

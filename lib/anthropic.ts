@@ -75,7 +75,8 @@ For each video, assign:
 - relevanceScore: 0-100 integer (relevance to person's interests)
 - serendipityScore: 0-100 integer (how surprising/unexpected for this person)
 
-Select the BEST 9 videos: 3 core, 3 adjacent, 3 opposite.
+Select the BEST videos for each category: up to 10 core, 10 adjacent, 10 opposite (total up to 30).
+If fewer than 10 qualify for a category, include as many as meet the criteria.
 Return ONLY valid JSON array:
 [
   {
@@ -89,7 +90,7 @@ Return ONLY valid JSON array:
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 2048,
+    max_tokens: 4096,
     messages: [{ role: "user", content: prompt }],
   });
 
