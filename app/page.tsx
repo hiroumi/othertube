@@ -170,7 +170,7 @@ export default function HomePage() {
       };
 
       sessionStorage.setItem("othertube_result", JSON.stringify(result));
-      router.push("/results");
+      router.push(`/results?t=${result.generatedAt}`);
     } catch (err) {
       console.error(err);
       setError(
@@ -262,7 +262,7 @@ export default function HomePage() {
     };
 
     sessionStorage.setItem("othertube_result", JSON.stringify(result));
-    router.push("/results");
+    router.push(`/results?t=${result.generatedAt}`);
   }
 
   function delay(ms: number) {

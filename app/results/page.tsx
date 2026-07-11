@@ -8,22 +8,19 @@ import VideoSection from "@/components/VideoSection";
 import Disclaimer from "@/components/Disclaimer";
 import type { AnalysisResult, RecommendedVideo, RecommendationCategory } from "@/lib/types";
 
-function loadResult(): AnalysisResult | null {
-  if (typeof window === "undefined") return null;
-  const stored = sessionStorage.getItem("othertube_result");
-  return stored ? (JSON.parse(stored) as AnalysisResult) : null;
-}
-
 export default function ResultsPage() {
   const router = useRouter();
-  const [result] = useState<AnalysisResult | null>(loadResult);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (!result) {
+    const stored = sessionStorage.getItem("othertube_result");
+    if (stored) {
+      setResult(JSON.parse(stored) as AnalysisResult);
+    } else {
       router.replace("/");
     }
-  }, [result, router]);
+  }, [router]);
 
   function getVideosByCategory(category: RecommendationCategory): RecommendedVideo[] {
     return (result?.videos ?? []).filter((v) => v.category === category);
