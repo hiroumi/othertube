@@ -104,7 +104,12 @@ Based on this public information, generate an interest profile as a JSON object.
   const text = await generate(prompt);
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("No JSON found in response");
-  return JSON.parse(jsonMatch[0]) as InterestProfile;
+  const parsed = JSON.parse(jsonMatch[0]) as InterestProfile & Record<string, unknown>;
+  // Normalize: ensure youtubeSearchQueries is always an array
+  if (!parsed.youtubeSearchQueries?.length) {
+    parsed.youtubeSearchQueries = (parsed.keywords ?? []).slice(0, 4).map((k) => `${k} 解説`);
+  }
+  return parsed as InterestProfile;
 }
 
 export async function categorizeAndScoreVideos(

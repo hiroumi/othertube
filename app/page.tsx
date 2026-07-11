@@ -131,10 +131,14 @@ export default function HomePage() {
       await delay(400);
 
       setStep(4);
+      // youtubeSearchQueries が空の場合は keywords をフォールバックとして使用
+      const searchQueries: string[] = (interestProfile.youtubeSearchQueries?.length ?? 0) > 0
+        ? interestProfile.youtubeSearchQueries
+        : (interestProfile.keywords ?? []).slice(0, 4).map((k: string) => `${k} 解説`);
       const ytRes = await fetch("/api/youtube", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ queries: interestProfile.youtubeSearchQueries, language: interestProfile.language }),
+        body: JSON.stringify({ queries: searchQueries, language: interestProfile.language }),
       });
       const { videos: rawVideos, fallback } = await ytRes.json();
 
