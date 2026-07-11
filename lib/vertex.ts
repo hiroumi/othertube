@@ -1,31 +1,46 @@
-import { VertexAI } from "@google-cloud/vertexai";
+import { GoogleAuth } from "google-auth-library";
 import type { SourceProfile, InterestProfile, YouTubeVideo, RecommendedVideo, RecommendationCategory } from "./types";
 
-function getModel() {
+function getAuth() {
   const base64 = process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64;
   if (!base64) throw new Error("GOOGLE_APPLICATION_CREDENTIALS_BASE64 is not set");
-
   const credentials = JSON.parse(Buffer.from(base64, "base64").toString("utf-8"));
-  const projectId = process.env.GCP_PROJECT_ID ?? (credentials.project_id as string);
-  if (!projectId) throw new Error("GCP_PROJECT_ID is not set");
-
-  const vertex = new VertexAI({
-    project: projectId,
-    location: "us-central1",
-    googleAuthOptions: { credentials },
+  return new GoogleAuth({
+    credentials,
+    scopes: ["https://www.googleapis.com/auth/generative-language"],
   });
-
-  return vertex.getGenerativeModel({ model: "gemini-2.0-flash-001" });
 }
 
 async function generate(prompt: string): Promise<string> {
-  const model = getModel();
-  const result = await model.generateContent({
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-  });
-  const candidate = result.response.candidates?.[0];
-  const text = candidate?.content?.parts?.[0]?.text ?? "";
-  if (!text) throw new Error("Empty response from Vertex AI");
+  const auth = getAuth();
+  const token = await auth.getAccessToken();
+  if (!token) throw new Error("Failed to get access token from service account");
+
+  const response = await fetch(
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Gemini API (service account) ${response.status}: ${err.slice(0, 200)}`);
+  }
+
+  type GeminiResponse = {
+    candidates: Array<{ content: { parts: Array<{ text: string }> } }>;
+  };
+  const data = (await response.json()) as GeminiResponse;
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  if (!text) throw new Error("Empty response from Gemini API");
   return text;
 }
 
@@ -88,7 +103,7 @@ Based on this public information, generate an interest profile as a JSON object.
 
   const text = await generate(prompt);
   const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("No JSON found in Vertex AI response");
+  if (!jsonMatch) throw new Error("No JSON found in response");
   return JSON.parse(jsonMatch[0]) as InterestProfile;
 }
 
@@ -133,7 +148,7 @@ Return ONLY a valid JSON array with no additional text or markdown:
 
   const text = await generate(prompt);
   const jsonMatch = text.match(/\[[\s\S]*\]/);
-  if (!jsonMatch) throw new Error("No JSON array found in Vertex AI response");
+  if (!jsonMatch) throw new Error("No JSON array found in response");
 
   type ScoreEntry = {
     videoIndex: number;
