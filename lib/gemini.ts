@@ -9,7 +9,7 @@ function getClient() {
 
 export async function analyzeProfile(profile: SourceProfile): Promise<InterestProfile> {
   const genAI = getClient();
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const effectivePosts = profile.posts.length > 0
     ? profile.posts
@@ -83,7 +83,7 @@ export async function categorizeAndScoreVideos(
   if (videos.length === 0) return [];
 
   const genAI = getClient();
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const videoList = videos
     .map(
