@@ -23,6 +23,22 @@ export async function GET() {
     results["vertex_token"] = `❌ ${e instanceof Error ? e.message : String(e)}`;
   }
 
+  // Check if aiplatform.googleapis.com is enabled
+  if (vertexToken) {
+    try {
+      const svcUrl = `https://serviceusage.googleapis.com/v1/projects/${projectId}/services/aiplatform.googleapis.com`;
+      const svcRes = await fetch(svcUrl, { headers: { Authorization: `Bearer ${vertexToken}` } });
+      if (svcRes.ok) {
+        const data = (await svcRes.json()) as { state?: string };
+        results["aiplatform_api"] = data.state === "ENABLED" ? "✅ ENABLED" : `⚠️ ${data.state ?? "UNKNOWN"}`;
+      } else {
+        results["aiplatform_api"] = `❌ ${svcRes.status}`;
+      }
+    } catch (e) {
+      results["aiplatform_api"] = `❌ ${e instanceof Error ? e.message.slice(0, 60) : String(e)}`;
+    }
+  }
+
   // List available Gemini models in Vertex AI
   if (vertexToken) {
     try {
