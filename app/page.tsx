@@ -119,7 +119,7 @@ export default function HomePage() {
       const ytRes = await fetch("/api/youtube", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ queries: interestProfile.youtubeSearchQueries }),
+        body: JSON.stringify({ queries: interestProfile.youtubeSearchQueries, language: interestProfile.language }),
       });
       const { videos: rawVideos, fallback } = await ytRes.json();
 

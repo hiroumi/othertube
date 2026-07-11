@@ -39,7 +39,8 @@ Return ONLY valid JSON with no additional text.
   "interests": ["array of 4-6 interest topics in Japanese that characterize this channel"],
   "perspective": "string - 1-2 sentences in Japanese describing this creator's worldview or approach",
   "keywords": ["array of 4-6 English keywords characterizing this channel's content"],
-  "youtubeSearchQueries": ["array of 4-5 English search queries to find interesting content FROM OTHER CHANNELS that this creator's audience would love — explore adjacent fields, different angles, and unexpected connections"]
+  "language": "ISO 639-1 code of the creator's primary language detected from their video titles/descriptions (e.g. 'ja' for Japanese, 'en' for English)",
+  "youtubeSearchQueries": ["array of 4-5 search queries to find interesting content FROM OTHER CHANNELS. Write queries in the SAME language as the creator's primary language (detected above). For technical/international topics, mixing English terms is fine."]
 }`
     : `You are analyzing a person's public X (Twitter) profile and posts to understand their interests and perspective.
 
@@ -58,8 +59,9 @@ Based on this public information, generate an interest profile as a JSON object.
   "summary": "string - 1-2 sentences in Japanese describing their interests and perspective",
   "interests": ["array of 4-6 interest topics in Japanese"],
   "perspective": "string - 1-2 sentences in Japanese describing how they view the world",
-  "keywords": ["array of 4-6 English keywords for YouTube search"],
-  "youtubeSearchQueries": ["array of 4-5 English YouTube search queries based on their interests"]
+  "keywords": ["array of 4-6 keywords for YouTube search"],
+  "language": "ISO 639-1 code of the user's primary language detected from their posts (e.g. 'ja' for Japanese, 'en' for English)",
+  "youtubeSearchQueries": ["array of 4-5 YouTube search queries. Write them in the SAME language as the user's posts (detected above). For technical/international terms, mixing English is fine."]
 }`;
 
   const response = await client.messages.create({

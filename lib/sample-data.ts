@@ -71,12 +71,13 @@ export const SAMPLE_INTEREST_PROFILES: Record<string, InterestProfile> = {
     perspective:
       "新しい技術を、事業性と社会への影響の両面から評価する傾向があります。技術の完成度よりも、普及経路と社会実装の難しさに注目しています。",
     keywords: ["AI agent", "startup", "product development", "social impact"],
+    language: "ja",
     youtubeSearchQueries: [
-      "AI agents startup practical applications 2024",
-      "future of software development AI impact",
-      "technology social impact documentary",
-      "generative AI business use cases",
-      "startup founder insights fundraising",
+      "AIエージェント スタートアップ 社会実装 事例",
+      "生成AI ビジネス活用 実践",
+      "スタートアップ 創業者 インタビュー 資金調達",
+      "テクノロジー 社会課題 解決 ドキュメンタリー",
+      "AI agents startup practical applications",
     ],
   },
   art_architect: {
@@ -86,12 +87,13 @@ export const SAMPLE_INTEREST_PROFILES: Record<string, InterestProfile> = {
     perspective:
       "デザインを問題解決ではなく問題の発見と捉え、余白・素材・動線といった非言語的な要素に強い関心を持っています。",
     keywords: ["architecture", "art direction", "spatial design", "Bauhaus", "urban space"],
+    language: "ja",
     youtubeSearchQueries: [
-      "contemporary architecture documentary Zaha Hadid",
-      "Bauhaus design philosophy modern application",
-      "urban space design human experience",
-      "Japanese architecture wood natural materials",
-      "museum exhibition design spatial storytelling",
+      "現代建築 ドキュメンタリー 日本建築",
+      "バウハウス デザイン哲学 現代への応用",
+      "都市空間 デザイン 人間体験",
+      "美術館 展示デザイン 空間演出",
+      "建築家 インタビュー 設計思想",
     ],
   },
   eco_activist: {
@@ -101,12 +103,13 @@ export const SAMPLE_INTEREST_PROFILES: Record<string, InterestProfile> = {
     perspective:
       "科学的知識と地域住民の生活感覚を橋渡しすることに関心を持ち、自然環境への関与が必要な場合もあると認識しています。",
     keywords: ["biodiversity", "ecosystem", "community", "satoyama", "environmental education"],
+    language: "ja",
     youtubeSearchQueries: [
-      "biodiversity loss ecosystem collapse documentary",
-      "satoyama landscape traditional Japanese land management",
-      "community garden urban ecosystem",
-      "insect ecology food system future protein",
-      "rewilding nature restoration case study",
+      "生物多様性 生態系 ドキュメンタリー",
+      "里山 伝統的土地管理 日本",
+      "コミュニティガーデン 都市農業 エコシステム",
+      "昆虫食 食料システム 未来のタンパク質",
+      "自然再生 リワイルディング 環境保全",
     ],
   },
 };
@@ -119,6 +122,7 @@ export const FEATURED_INTEREST_PROFILES: Record<string, InterestProfile> = {
     perspective:
       "全国各地の食と文化を笑いとともに発信することで、地域の魅力を掘り起こす視点を持っています。都市目線ではなく、現地の生活感覚を大切にしています。",
     keywords: ["Japanese comedy", "regional food", "local culture", "stand-up", "gourmet"],
+    language: "ja",
     youtubeSearchQueries: [
       "日本 ご当地グルメ 食文化 ドキュメンタリー",
       "Japanese regional food local culture documentary",
@@ -134,6 +138,7 @@ export const FEATURED_INTEREST_PROFILES: Record<string, InterestProfile> = {
     perspective:
       "「デジタルと自然は対立しない」という思想のもと、計算機と物質の融合を探求しています。研究・アート・ビジネスの境界を超えた活動を続けています。",
     keywords: ["media art", "digital nature", "AI art", "interactive installation", "technology philosophy"],
+    language: "ja",
     youtubeSearchQueries: [
       "media art digital nature technology installation",
       "AI art generative creative machine learning",
@@ -149,6 +154,7 @@ export const FEATURED_INTEREST_PROFILES: Record<string, InterestProfile> = {
     perspective:
       "技術の本質を理解しつつ事業化する実践的な視点を持ち、AIの社会実装において先駆者的な役割を担っています。コードを書き続ける現役エンジニアとしての言葉が持ち味です。",
     keywords: ["generative AI", "software engineering", "deep learning", "startup Japan", "LLM implementation"],
+    language: "ja",
     youtubeSearchQueries: [
       "generative AI LLM implementation engineering",
       "deep learning machine learning practical tutorial",

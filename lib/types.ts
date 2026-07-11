@@ -14,6 +14,7 @@ export interface InterestProfile {
   perspective: string;
   keywords: string[];
   youtubeSearchQueries: string[];
+  language?: string; // ISO 639-1 code detected from posts, e.g. "ja", "en"
 }
 
 export interface YouTubeVideo {

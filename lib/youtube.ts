@@ -17,11 +17,28 @@ interface YouTubeApiResponse {
   error?: { message: string };
 }
 
-export async function searchYouTubeVideos(queries: string[]): Promise<YouTubeVideo[]> {
+const LANGUAGE_TO_REGION: Record<string, string> = {
+  ja: "JP",
+  en: "US",
+  ko: "KR",
+  zh: "TW",
+  fr: "FR",
+  de: "DE",
+  es: "ES",
+  pt: "BR",
+};
+
+export async function searchYouTubeVideos(
+  queries: string[],
+  options?: { language?: string }
+): Promise<YouTubeVideo[]> {
   const apiKey = process.env.YOUTUBE_API_KEY;
   if (!apiKey) {
     throw new Error("YOUTUBE_API_KEY is not set");
   }
+
+  const lang = options?.language ?? "ja";
+  const regionCode = LANGUAGE_TO_REGION[lang];
 
   const allVideos: YouTubeVideo[] = [];
   const seenIds = new Set<string>();
@@ -34,7 +51,8 @@ export async function searchYouTubeVideos(queries: string[]): Promise<YouTubeVid
       url.searchParams.set("q", query);
       url.searchParams.set("type", "video");
       url.searchParams.set("maxResults", "10");
-      url.searchParams.set("relevanceLanguage", "ja");
+      url.searchParams.set("relevanceLanguage", lang);
+      if (regionCode) url.searchParams.set("regionCode", regionCode);
       url.searchParams.set("key", apiKey);
 
       const res = await fetch(url.toString());
