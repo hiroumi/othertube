@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Play } from "lucide-react";
+import { ArrowRight, Play, PlaySquare, AtSign } from "lucide-react";
 import AccountInputForm from "@/components/AccountInputForm";
+import YouTubeInputForm from "@/components/YouTubeInputForm";
 import SampleProfiles from "@/components/SampleProfiles";
 import FeaturedProfiles, { FEATURED_USERS } from "@/components/FeaturedProfiles";
 import AgentProgress from "@/components/AgentProgress";
@@ -11,14 +12,37 @@ import Disclaimer from "@/components/Disclaimer";
 import type { SourceProfile, AnalysisResult } from "@/lib/types";
 import { SAMPLE_PROFILES, SAMPLE_INTEREST_PROFILES, getSampleVideosForProfile } from "@/lib/sample-data";
 
+type Mode = "x" | "youtube";
+
+const FEATURED_YOUTUBE_CHANNELS = [
+  {
+    handle: "TED",
+    displayName: "TED",
+    tag: "アイデア・テクノロジー・社会",
+    description: "世界の第一線で活躍する思想家・研究者・起業家が18分以内で語る、世界を変えるアイデア。",
+  },
+  {
+    handle: "veritasium",
+    displayName: "Veritasium",
+    tag: "物理・サイエンス・教育",
+    description: "物理・数学・工学の謎を映像実験と深い考察で解き明かす科学エンターテインメントチャンネル。",
+  },
+  {
+    handle: "mkbhd",
+    displayName: "MKBHD",
+    tag: "テクノロジー・ガジェット",
+    description: "世界最大級のテクノロジーレビューチャンネル。最新デバイスを映像美と鋭い視点で評価。",
+  },
+] as const;
+
 export default function HomePage() {
   const router = useRouter();
+  const [mode, setMode] = useState<Mode>("x");
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(0);
   const [error, setError] = useState("");
   const [forceShowManual, setForceShowManual] = useState(false);
 
-  // ページロード時におすすめユーザーのX APIをバックグラウンドでキャッシュウォーム
   useEffect(() => {
     FEATURED_USERS.forEach(({ username }) => {
       fetch("/api/x", {
@@ -36,7 +60,6 @@ export default function HomePage() {
     setStep(0);
 
     try {
-      // Step 1: プロフィール読み取り（X APIで自動取得 or 手動投稿をそのまま使用）
       setStep(1);
 
       if (profile.source === "api") {
@@ -48,7 +71,6 @@ export default function HomePage() {
         const xData = await xRes.json();
 
         if (xData.fallback) {
-          // X APIが使えない → 手動入力フォームを展開して停止
           setIsLoading(false);
           setStep(0);
           setForceShowManual(true);
@@ -60,7 +82,6 @@ export default function HomePage() {
           return;
         }
 
-        // X APIで取得成功 → profileを更新
         profile = {
           ...profile,
           displayName: xData.profile.displayName,
@@ -72,7 +93,6 @@ export default function HomePage() {
 
       await delay(400);
 
-      // Step 2: 関心テーマ抽出
       setStep(2);
       const analyzeRes = await fetch("/api/analyze", {
         method: "POST",
@@ -92,11 +112,9 @@ export default function HomePage() {
       }
       const { interestProfile } = analyzeData;
 
-      // Step 3: YouTube検索プラン
       setStep(3);
       await delay(400);
 
-      // Step 4: 動画候補探索
       setStep(4);
       const ytRes = await fetch("/api/youtube", {
         method: "POST",
@@ -105,12 +123,10 @@ export default function HomePage() {
       });
       const { videos: rawVideos, fallback } = await ytRes.json();
 
-      // Step 5: スコアリング
       setStep(5);
       let recommendations;
 
       if (fallback || !rawVideos || rawVideos.length === 0) {
-        // YouTube APIなし：サンプル動画を使用
         const sampleId =
           profile.source === "sample" ? profile.username : "tech_innovator";
         recommendations = getSampleVideosForProfile(sampleId);
@@ -118,13 +134,16 @@ export default function HomePage() {
         const recRes = await fetch("/api/recommend", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ videos: rawVideos, interestProfile }),
+          body: JSON.stringify({
+            videos: rawVideos,
+            interestProfile,
+            sourceChannelId: profile.sourceChannelId,
+          }),
         });
         const { recommendations: rec } = await recRes.json();
         recommendations = rec;
       }
 
-      // Step 6: フィード生成
       setStep(6);
       await delay(300);
 
@@ -135,7 +154,6 @@ export default function HomePage() {
         generatedAt: new Date().toISOString(),
       };
 
-      // 結果をsessionStorageに保存してリダイレクト
       sessionStorage.setItem("othertube_result", JSON.stringify(result));
       router.push("/results");
     } catch (err) {
@@ -144,6 +162,57 @@ export default function HomePage() {
         err instanceof Error
           ? err.message
           : "分析中にエラーが発生しました。サンプルデータでお試しください。"
+      );
+      setIsLoading(false);
+      setStep(0);
+    }
+  }
+
+  async function handleYouTubeChannelSubmit(channelInput: string) {
+    setIsLoading(true);
+    setError("");
+    setStep(0);
+
+    try {
+      setStep(1);
+      const chRes = await fetch("/api/youtube-channel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channelInput }),
+      });
+      const chData = await chRes.json();
+
+      if (chData.fallback) {
+        setIsLoading(false);
+        setStep(0);
+        setError("YouTube APIキーが設定されていません。");
+        return;
+      }
+      if (!chRes.ok || chData.error) {
+        throw new Error(chData.error ?? "チャンネルの取得に失敗しました。");
+      }
+
+      const { channelInfo } = chData;
+
+      const posts = channelInfo.recentVideos.map(
+        (v: { title: string; description: string }) =>
+          `動画タイトル: ${v.title}\n概要: ${v.description}`
+      );
+
+      const profile: SourceProfile = {
+        username: channelInfo.handle?.replace(/^@/, "") ?? channelInfo.channelId,
+        displayName: channelInfo.channelTitle,
+        bio: channelInfo.description,
+        posts,
+        source: "youtube",
+        sourceChannelId: channelInfo.channelId,
+      };
+
+      await runAnalysis(profile);
+    } catch (err) {
+      console.error(err);
+      setError(
+        err instanceof Error ? err.message : "チャンネルの取得に失敗しました。"
       );
       setIsLoading(false);
       setStep(0);
@@ -159,7 +228,6 @@ export default function HomePage() {
       source: "sample",
     };
 
-    // サンプルは事前定義データを直接使用（高速）
     setIsLoading(true);
     setError("");
 
@@ -188,7 +256,6 @@ export default function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      {/* Header */}
       <header className="border-b border-gray-100 bg-white px-4 py-3">
         <div className="mx-auto flex max-w-5xl items-center gap-2">
           <Play className="h-5 w-5 fill-red-500 text-red-500" />
@@ -205,7 +272,6 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            {/* Hero Section */}
             <section className="bg-white px-4 pb-12 pt-16">
               <div className="mx-auto max-w-2xl text-center">
                 <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-red-100 bg-red-50 px-3 py-1 text-xs font-medium text-red-600">
@@ -222,10 +288,9 @@ export default function HomePage() {
                 </p>
 
                 <p className="mb-8 text-sm text-gray-500">
-                  いつものおすすめから抜け出して、誰かの視点でYouTubeを探索しよう。
+                  誰かの視点を借りて、普段と違うYouTubeを探索しよう。
                 </p>
 
-                {/* Visual */}
                 <div className="mx-auto mb-10 flex max-w-sm items-center justify-center gap-4">
                   <div className="flex flex-col items-center gap-1">
                     <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-gray-200 bg-gray-100 text-2xl">
@@ -261,25 +326,100 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* Input Form */}
                 <div className="mx-auto max-w-lg space-y-6">
-                  <AccountInputForm
-                    onSubmit={runAnalysis}
-                    isLoading={isLoading}
-                    forceShowManual={forceShowManual}
-                    externalError={error}
-                  />
-
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-gray-200" />
-                    </div>
-                    <div className="relative flex justify-center">
-                      <span className="bg-white px-3 text-xs text-gray-400">または</span>
-                    </div>
+                  {/* Mode tabs */}
+                  <div className="flex rounded-xl border border-gray-200 bg-gray-50 p-1">
+                    <button
+                      onClick={() => { setMode("x"); setError(""); }}
+                      className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${
+                        mode === "x"
+                          ? "bg-white text-gray-900 shadow-sm"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      <AtSign className="h-4 w-4" />
+                      Xアカウント
+                    </button>
+                    <button
+                      onClick={() => { setMode("youtube"); setError(""); }}
+                      className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${
+                        mode === "youtube"
+                          ? "bg-white text-gray-900 shadow-sm"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      <PlaySquare className="h-4 w-4" />
+                      YouTubeチャンネル
+                    </button>
                   </div>
 
-                  <FeaturedProfiles onSelect={runAnalysis} isLoading={isLoading} />
+                  {mode === "x" ? (
+                    <>
+                      <AccountInputForm
+                        onSubmit={runAnalysis}
+                        isLoading={isLoading}
+                        forceShowManual={forceShowManual}
+                        externalError={error}
+                      />
+
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-gray-200" />
+                        </div>
+                        <div className="relative flex justify-center">
+                          <span className="bg-white px-3 text-xs text-gray-400">またはXのおすすめユーザー</span>
+                        </div>
+                      </div>
+
+                      <FeaturedProfiles onSelect={runAnalysis} isLoading={isLoading} />
+                    </>
+                  ) : (
+                    <>
+                      <YouTubeInputForm
+                        onSubmit={handleYouTubeChannelSubmit}
+                        isLoading={isLoading}
+                        externalError={error}
+                      />
+
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-gray-200" />
+                        </div>
+                        <div className="relative flex justify-center">
+                          <span className="bg-white px-3 text-xs text-gray-400">またはおすすめチャンネル</span>
+                        </div>
+                      </div>
+
+                      {/* Featured YouTube Channels */}
+                      <div className="space-y-3">
+                        <p className="text-center text-sm font-medium text-gray-500">
+                          おすすめチャンネルで試す
+                        </p>
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          {FEATURED_YOUTUBE_CHANNELS.map((ch) => (
+                            <button
+                              key={ch.handle}
+                              onClick={() => handleYouTubeChannelSubmit(`@${ch.handle}`)}
+                              disabled={isLoading}
+                              className="group rounded-xl border border-gray-200 bg-white p-4 text-left transition-all duration-200 hover:border-red-300 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <div className="mb-2">
+                                <p className="text-sm font-bold text-gray-800">{ch.displayName}</p>
+                                <p className="flex items-center gap-0.5 text-xs text-red-500">
+                                  <PlaySquare className="h-3 w-3" />
+                                  @{ch.handle}
+                                </p>
+                              </div>
+                              <p className="mb-2 text-xs font-medium text-red-600 bg-red-50 rounded-full px-2 py-0.5 inline-block">
+                                {ch.tag}
+                              </p>
+                              <p className="text-xs leading-relaxed text-gray-500">{ch.description}</p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center">
@@ -297,7 +437,6 @@ export default function HomePage() {
               </div>
             </section>
 
-            {/* How it works */}
             <section className="border-t border-gray-100 bg-gray-50 px-4 py-12">
               <div className="mx-auto max-w-3xl">
                 <h2 className="mb-8 text-center text-lg font-bold text-gray-700">
@@ -307,18 +446,18 @@ export default function HomePage() {
                   {[
                     {
                       step: "01",
-                      title: "Xアカウントを入力",
-                      desc: "分析したい人物のXアカウントURLや投稿テキストを入力します。",
+                      title: "アカウントを入力",
+                      desc: "XアカウントまたはYouTubeチャンネルのURLや@ハンドルを入力します。",
                     },
                     {
                       step: "02",
                       title: "AIが関心を推定",
-                      desc: "公開情報からAIが関心・視点・キーワードを分析します。",
+                      desc: "公開された投稿・動画からAIが関心・視点・キーワードを分析します。",
                     },
                     {
                       step: "03",
                       title: "仮想フィードを生成",
-                      desc: "その人物の関心に基づいたYouTube動画を3つの視点で提示します。",
+                      desc: "その人物・クリエイターの関心に基づいたYouTube動画を3つの視点で提示します。",
                     },
                   ].map((item) => (
                     <div

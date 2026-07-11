@@ -3,7 +3,8 @@ export interface SourceProfile {
   displayName?: string;
   bio?: string;
   posts: string[];
-  source: "api" | "manual" | "sample";
+  source: "api" | "manual" | "sample" | "youtube";
+  sourceChannelId?: string; // YouTube: exclude this channel from recommendations
 }
 
 export interface InterestProfile {
@@ -21,6 +22,7 @@ export interface YouTubeVideo {
   description: string;
   thumbnail: string;
   channelTitle: string;
+  channelId?: string;
   publishedAt: string;
   url: string;
 }

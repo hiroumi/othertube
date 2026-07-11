@@ -7,6 +7,7 @@ interface YouTubeSearchItem {
     description: string;
     thumbnails: { medium?: { url: string }; default?: { url: string } };
     channelTitle: string;
+    channelId: string;
     publishedAt: string;
   };
 }
@@ -61,6 +62,7 @@ export async function searchYouTubeVideos(queries: string[]): Promise<YouTubeVid
             item.snippet.thumbnails.default?.url ??
             `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
           channelTitle: item.snippet.channelTitle,
+          channelId: item.snippet.channelId,
           publishedAt: item.snippet.publishedAt,
           url: `https://www.youtube.com/watch?v=${videoId}`,
         });

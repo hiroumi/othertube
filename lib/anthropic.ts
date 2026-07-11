@@ -14,9 +14,34 @@ export async function analyzeProfile(profile: SourceProfile): Promise<InterestPr
 
   const postsText = effectivePosts.length > 0
     ? effectivePosts.map((p, i) => `${i + 1}. ${p}`).join("\n")
-    : "(投稿情報なし — プロフィール情報のみで推定)";
+    : "(情報なし — プロフィール情報のみで推定)";
 
-  const prompt = `You are analyzing a person's public X (Twitter) profile and posts to understand their interests and perspective.
+  const isYouTube = profile.source === "youtube";
+
+  const prompt = isYouTube
+    ? `You are analyzing a YouTube creator's channel to understand the themes, interests, and perspective expressed through their content.
+
+Channel:
+- Handle: @${profile.username}
+- Channel Name: ${profile.displayName ?? profile.username}
+- Description: ${profile.bio ?? "No description available"}
+
+Recent Video Titles and Descriptions:
+${postsText}
+
+Based on this creator's content, generate an interest profile. The goal is to discover what OTHER YouTube videos (from different channels) this creator's audience would enjoy — not similar creators, but intellectually adjacent or contrasting content.
+
+Return ONLY valid JSON with no additional text.
+
+{
+  "displayName": "string - channel name",
+  "summary": "string - 1-2 sentences in Japanese describing this creator's themes and perspective",
+  "interests": ["array of 4-6 interest topics in Japanese that characterize this channel"],
+  "perspective": "string - 1-2 sentences in Japanese describing this creator's worldview or approach",
+  "keywords": ["array of 4-6 English keywords characterizing this channel's content"],
+  "youtubeSearchQueries": ["array of 4-5 English search queries to find interesting content FROM OTHER CHANNELS that this creator's audience would love — explore adjacent fields, different angles, and unexpected connections"]
+}`
+    : `You are analyzing a person's public X (Twitter) profile and posts to understand their interests and perspective.
 
 Profile:
 - Username: @${profile.username}
