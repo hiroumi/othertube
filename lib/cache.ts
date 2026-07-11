@@ -202,20 +202,26 @@ export async function getRecentSearches(
 
 // ---------------------------------------------------------------------------
 // Unified helpers
-// L1（メモリ）→ L2（Supabase）→ X API の順で使う
+// Supabase が設定されている場合は正本（source of truth）として扱う。
+// L1（メモリ）は Supabase 不在時の補助のみ。
+// これにより Supabase 側で DELETE した際に L1 の古いデータが使われる問題を防ぐ。
 // ---------------------------------------------------------------------------
 
 export async function getCachedProfile(username: string): Promise<XProfile | null> {
-  const mem = getMemCache(username);
-  if (mem) return mem;
-
-  const db = await getSupabaseCache(username);
-  if (db) {
-    setMemCache(username, db); // L2ヒット時はL1にも保存
-    return db;
+  if (getSupabaseConfig()) {
+    // Supabase が設定されている → 正本として確認
+    const db = await getSupabaseCache(username);
+    if (db) {
+      setMemCache(username, db);
+      return db;
+    }
+    // Supabase にない = 削除された or 期限切れ → L1 の古いデータも破棄
+    memCache.delete(normalizeUsername(username));
+    return null;
   }
 
-  return null;
+  // Supabase 未設定 → L1 のみ使用
+  return getMemCache(username);
 }
 
 export async function setCachedProfile(username: string, profile: XProfile): Promise<void> {
