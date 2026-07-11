@@ -6,6 +6,7 @@ import { ArrowRight, Play, PlaySquare, AtSign } from "lucide-react";
 import AccountInputForm from "@/components/AccountInputForm";
 import YouTubeInputForm from "@/components/YouTubeInputForm";
 import SampleProfiles from "@/components/SampleProfiles";
+import RecentSearches from "@/components/RecentSearches";
 import FeaturedProfiles, { FEATURED_USERS } from "@/components/FeaturedProfiles";
 import AgentProgress from "@/components/AgentProgress";
 import Disclaimer from "@/components/Disclaimer";
@@ -42,6 +43,7 @@ export default function HomePage() {
   const [step, setStep] = useState(0);
   const [error, setError] = useState("");
   const [forceShowManual, setForceShowManual] = useState(false);
+  const [showSamples, setShowSamples] = useState(false);
 
   useEffect(() => {
     FEATURED_USERS.forEach(({ username }) => {
@@ -51,7 +53,20 @@ export default function HomePage() {
         body: JSON.stringify({ username }),
       }).catch(() => {});
     });
-  }, []);
+
+    // URL params からの自動トリガー（履歴ページのカードクリック）
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q");
+    const source = (params.get("source") ?? "x") as Mode;
+    if (q) {
+      setMode(source);
+      if (source === "youtube") {
+        handleYouTubeChannelSubmit(q);
+      } else {
+        runAnalysis({ username: q, posts: [], source: "api" });
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function runAnalysis(profile: SourceProfile) {
     setIsLoading(true);
@@ -426,11 +441,32 @@ export default function HomePage() {
                       <div className="w-full border-t border-gray-200" />
                     </div>
                     <div className="relative flex justify-center">
-                      <span className="bg-white px-3 text-xs text-gray-400">またはサンプルで試す</span>
+                      <span className="bg-white px-3 text-xs text-gray-400">または他のユーザーの視点で試す</span>
                     </div>
                   </div>
 
-                  <SampleProfiles profiles={SAMPLE_PROFILES} onSelect={handleSampleSelect} />
+                  <RecentSearches
+                    onSelectX={(username) =>
+                      runAnalysis({ username, posts: [], source: "api" })
+                    }
+                    onSelectYouTube={handleYouTubeChannelSubmit}
+                    isLoading={isLoading}
+                    onEmpty={() => setShowSamples(true)}
+                  />
+
+                  {showSamples && (
+                    <>
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-gray-200" />
+                        </div>
+                        <div className="relative flex justify-center">
+                          <span className="bg-white px-3 text-xs text-gray-400">またはサンプルで試す</span>
+                        </div>
+                      </div>
+                      <SampleProfiles profiles={SAMPLE_PROFILES} onSelect={handleSampleSelect} />
+                    </>
+                  )}
 
                   <Disclaimer />
                 </div>

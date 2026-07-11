@@ -112,6 +112,95 @@ export async function setSupabaseCache(username: string, profile: XProfile): Pro
 }
 
 // ---------------------------------------------------------------------------
+// Search history (search_history table)
+// 誰がどのアカウントを検索したかを記録。ホームページの「最近検索」に使用。
+//
+// Supabase SQL Editor で一度だけ実行:
+//   create table search_history (
+//     id          bigserial primary key,
+//     username    text not null,
+//     display_name text,
+//     source      text not null default 'x',
+//     summary     text,
+//     interests   jsonb,
+//     searched_at timestamptz not null default now(),
+//     unique (username, source)
+//   );
+//   create index search_history_searched_at_idx on search_history (searched_at desc);
+// ---------------------------------------------------------------------------
+
+export interface SearchHistoryEntry {
+  username: string;
+  displayName?: string;
+  source: "x" | "youtube";
+  summary?: string;
+  interests?: string[];
+  searchedAt: string;
+}
+
+export async function recordSearchHistory(
+  entry: Omit<SearchHistoryEntry, "searchedAt">
+): Promise<void> {
+  const config = getSupabaseConfig();
+  if (!config) return;
+
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(config.url, config.key, {
+      auth: { persistSession: false },
+    });
+
+    await supabase.from("search_history").upsert(
+      {
+        username: entry.username,
+        display_name: entry.displayName,
+        source: entry.source,
+        summary: entry.summary,
+        interests: entry.interests ?? [],
+        searched_at: new Date().toISOString(),
+      },
+      { onConflict: "username,source" }
+    );
+  } catch {
+    // non-critical
+  }
+}
+
+export async function getRecentSearches(
+  limit = 20,
+  offset = 0
+): Promise<SearchHistoryEntry[]> {
+  const config = getSupabaseConfig();
+  if (!config) return [];
+
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(config.url, config.key, {
+      auth: { persistSession: false },
+    });
+
+    const { data, error } = await supabase
+      .from("search_history")
+      .select("username, display_name, source, summary, interests, searched_at")
+      .order("searched_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error || !data) return [];
+
+    return data.map((row) => ({
+      username: row.username as string,
+      displayName: row.display_name as string | undefined,
+      source: row.source as "x" | "youtube",
+      summary: row.summary as string | undefined,
+      interests: row.interests as string[] | undefined,
+      searchedAt: row.searched_at as string,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Unified helpers
 // L1（メモリ）→ L2（Supabase）→ X API の順で使う
 // ---------------------------------------------------------------------------

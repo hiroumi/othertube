@@ -2,6 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import type { SourceProfile, InterestProfile } from "@/lib/types";
 import { SAMPLE_INTEREST_PROFILES, FEATURED_INTEREST_PROFILES } from "@/lib/sample-data";
 
+async function saveHistory(profile: SourceProfile, interestProfile: InterestProfile) {
+  try {
+    const { recordSearchHistory } = await import("@/lib/cache");
+    await recordSearchHistory({
+      username: profile.username,
+      displayName: interestProfile.displayName,
+      source: profile.source === "youtube" ? "youtube" : "x",
+      summary: interestProfile.summary,
+      interests: interestProfile.interests,
+    });
+  } catch {
+    // non-critical
+  }
+}
+
 function buildFallback(profile: SourceProfile): InterestProfile {
   return {
     displayName: profile.displayName ?? profile.username,
@@ -45,12 +60,15 @@ export async function POST(req: NextRequest) {
     if (!process.env.ANTHROPIC_API_KEY) {
       const username = profile.username.toLowerCase().replace(/^@/, "");
       const featuredProfile = FEATURED_INTEREST_PROFILES[username];
-      return NextResponse.json({ interestProfile: featuredProfile ?? buildFallback(profile) });
+      const interestProfile = featuredProfile ?? buildFallback(profile);
+      void saveHistory(profile, interestProfile);
+      return NextResponse.json({ interestProfile });
     }
 
     try {
       const { analyzeProfile } = await import("@/lib/anthropic");
       const interestProfile = await analyzeProfile(profile);
+      void saveHistory(profile, interestProfile);
       return NextResponse.json({ interestProfile });
     } catch (anthropicErr) {
       // Anthropic API の失敗は記録してフォールバックで続行
@@ -61,6 +79,7 @@ export async function POST(req: NextRequest) {
       const username = profile.username.toLowerCase().replace(/^@/, "");
       const featuredProfile = FEATURED_INTEREST_PROFILES[username];
       const fallbackProfile = featuredProfile ?? buildFallback(profile);
+      void saveHistory(profile, fallbackProfile);
 
       return NextResponse.json({
         interestProfile: fallbackProfile,
