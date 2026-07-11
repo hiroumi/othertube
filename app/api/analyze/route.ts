@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { SourceProfile, InterestProfile } from "@/lib/types";
-import { SAMPLE_INTEREST_PROFILES } from "@/lib/sample-data";
+import { SAMPLE_INTEREST_PROFILES, FEATURED_INTEREST_PROFILES } from "@/lib/sample-data";
 
 function buildFallback(profile: SourceProfile): InterestProfile {
   return {
@@ -43,7 +43,9 @@ export async function POST(req: NextRequest) {
     }
 
     if (!process.env.ANTHROPIC_API_KEY) {
-      return NextResponse.json({ interestProfile: buildFallback(profile) });
+      const username = profile.username.toLowerCase().replace(/^@/, "");
+      const featuredProfile = FEATURED_INTEREST_PROFILES[username];
+      return NextResponse.json({ interestProfile: featuredProfile ?? buildFallback(profile) });
     }
 
     try {
@@ -54,8 +56,14 @@ export async function POST(req: NextRequest) {
       // Anthropic API の失敗は記録してフォールバックで続行
       const errMsg = anthropicErr instanceof Error ? anthropicErr.message : String(anthropicErr);
       console.error("Anthropic API error:", errMsg);
+
+      // 注目ユーザーまたはサンプルの固有プロフィールを優先使用
+      const username = profile.username.toLowerCase().replace(/^@/, "");
+      const featuredProfile = FEATURED_INTEREST_PROFILES[username];
+      const fallbackProfile = featuredProfile ?? buildFallback(profile);
+
       return NextResponse.json({
-        interestProfile: buildFallback(profile),
+        interestProfile: fallbackProfile,
         anthropicError: errMsg,
       });
     }

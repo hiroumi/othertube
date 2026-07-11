@@ -111,6 +111,54 @@ export const SAMPLE_INTEREST_PROFILES: Record<string, InterestProfile> = {
   },
 };
 
+export const FEATURED_INTEREST_PROFILES: Record<string, InterestProfile> = {
+  "10000nabe": {
+    displayName: "渡辺銀次",
+    summary: "吉本所属のお笑いコンビ「ドンデコルテ」として、地方文化・ご当地グルメ・地産地消に強い愛着を持つコメディアン",
+    interests: ["お笑い・コメディ", "地方文化", "食文化・グルメ", "地産地消", "ローカルコミュニティ"],
+    perspective:
+      "全国各地の食と文化を笑いとともに発信することで、地域の魅力を掘り起こす視点を持っています。都市目線ではなく、現地の生活感覚を大切にしています。",
+    keywords: ["Japanese comedy", "regional food", "local culture", "stand-up", "gourmet"],
+    youtubeSearchQueries: [
+      "日本 ご当地グルメ 食文化 ドキュメンタリー",
+      "Japanese regional food local culture documentary",
+      "stand-up comedy Japanese comedian variety",
+      "地方 食材 地産地消 料理",
+      "manzai rakugo Japanese comedy performance",
+    ],
+  },
+  ochyai: {
+    displayName: "落合陽一",
+    summary: "メディアアーティストかつ筑波大学准教授として、デジタルネイチャーの思想でテクノロジーとアートと自然の境界を溶かす研究者・表現者",
+    interests: ["メディアアート", "デジタルネイチャー", "AI・テクノロジー", "インタラクティブアート", "社会と技術の哲学"],
+    perspective:
+      "「デジタルと自然は対立しない」という思想のもと、計算機と物質の融合を探求しています。研究・アート・ビジネスの境界を超えた活動を続けています。",
+    keywords: ["media art", "digital nature", "AI art", "interactive installation", "technology philosophy"],
+    youtubeSearchQueries: [
+      "media art digital nature technology installation",
+      "AI art generative creative machine learning",
+      "Japanese contemporary art technology exhibition",
+      "digital fabrication computational design",
+      "technology philosophy future society humanity",
+    ],
+  },
+  shi3z: {
+    displayName: "清水亮",
+    summary: "AI研究者・起業家として日本のソフトウェア・AI開発シーンを牽引し、生成AIと実装技術の最前線を発信するエンジニア経営者",
+    interests: ["AI・機械学習", "ソフトウェアエンジニアリング", "起業・スタートアップ", "生成AI実装", "日本のテック産業"],
+    perspective:
+      "技術の本質を理解しつつ事業化する実践的な視点を持ち、AIの社会実装において先駆者的な役割を担っています。コードを書き続ける現役エンジニアとしての言葉が持ち味です。",
+    keywords: ["generative AI", "software engineering", "deep learning", "startup Japan", "LLM implementation"],
+    youtubeSearchQueries: [
+      "generative AI LLM implementation engineering",
+      "deep learning machine learning practical tutorial",
+      "Japanese tech entrepreneur startup AI",
+      "software architecture system design engineering",
+      "AI startup business model technology innovation",
+    ],
+  },
+};
+
 export const SAMPLE_VIDEOS: RecommendedVideo[] = [
   // tech_innovator videos
   {
