@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ recommendations: [] });
     }
 
-    // Claude APIがあれば高度なスコアリング、なければシンプルスコアリング
+    // AI スコアリング: Anthropic → Gemini → シンプルスコアリング
     if (process.env.ANTHROPIC_API_KEY && filteredVideos.length >= 3) {
       try {
         const { categorizeAndScoreVideos } = await import("@/lib/anthropic");
@@ -29,7 +29,20 @@ export async function POST(req: NextRequest) {
         );
         return NextResponse.json({ recommendations });
       } catch {
-        // Claude失敗時はフォールバック
+        // Anthropic失敗 → Geminiへ
+      }
+    }
+
+    if (process.env.GOOGLE_AI_API_KEY && filteredVideos.length >= 3) {
+      try {
+        const { categorizeAndScoreVideos } = await import("@/lib/gemini");
+        const recommendations: RecommendedVideo[] = await categorizeAndScoreVideos(
+          interestProfile,
+          filteredVideos
+        );
+        return NextResponse.json({ recommendations });
+      } catch {
+        // Gemini失敗 → シンプルスコアリングへ
       }
     }
 

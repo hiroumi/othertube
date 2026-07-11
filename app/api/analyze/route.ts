@@ -57,35 +57,35 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (!process.env.ANTHROPIC_API_KEY) {
-      const username = profile.username.toLowerCase().replace(/^@/, "");
-      const featuredProfile = FEATURED_INTEREST_PROFILES[username];
-      const interestProfile = featuredProfile ?? buildFallback(profile);
-      void saveHistory(profile, interestProfile);
-      return NextResponse.json({ interestProfile });
+    // AI分析を試みる: Anthropic → Gemini → featured/generic fallback
+    if (process.env.ANTHROPIC_API_KEY) {
+      try {
+        const { analyzeProfile } = await import("@/lib/anthropic");
+        const interestProfile = await analyzeProfile(profile);
+        void saveHistory(profile, interestProfile);
+        return NextResponse.json({ interestProfile });
+      } catch (err) {
+        console.error("Anthropic API error:", err instanceof Error ? err.message : err);
+      }
     }
 
-    try {
-      const { analyzeProfile } = await import("@/lib/anthropic");
-      const interestProfile = await analyzeProfile(profile);
-      void saveHistory(profile, interestProfile);
-      return NextResponse.json({ interestProfile });
-    } catch (anthropicErr) {
-      // Anthropic API の失敗は記録してフォールバックで続行
-      const errMsg = anthropicErr instanceof Error ? anthropicErr.message : String(anthropicErr);
-      console.error("Anthropic API error:", errMsg);
-
-      // 注目ユーザーまたはサンプルの固有プロフィールを優先使用
-      const username = profile.username.toLowerCase().replace(/^@/, "");
-      const featuredProfile = FEATURED_INTEREST_PROFILES[username];
-      const fallbackProfile = featuredProfile ?? buildFallback(profile);
-      void saveHistory(profile, fallbackProfile);
-
-      return NextResponse.json({
-        interestProfile: fallbackProfile,
-        anthropicError: errMsg,
-      });
+    if (process.env.GOOGLE_AI_API_KEY) {
+      try {
+        const { analyzeProfile } = await import("@/lib/gemini");
+        const interestProfile = await analyzeProfile(profile);
+        void saveHistory(profile, interestProfile);
+        return NextResponse.json({ interestProfile });
+      } catch (err) {
+        console.error("Gemini API error:", err instanceof Error ? err.message : err);
+      }
     }
+
+    // どのAI APIも使えない場合 → featured profile or smart fallback
+    const username = profile.username.toLowerCase().replace(/^@/, "");
+    const featuredProfile = FEATURED_INTEREST_PROFILES[username];
+    const fallbackProfile = featuredProfile ?? buildFallback(profile);
+    void saveHistory(profile, fallbackProfile);
+    return NextResponse.json({ interestProfile: fallbackProfile });
   } catch (err) {
     console.error("Analyze API error:", err);
     return NextResponse.json(
