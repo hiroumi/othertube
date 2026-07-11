@@ -1,36 +1,40 @@
-import { VertexAI } from "@google-cloud/vertexai";
+import { GoogleAuth } from "google-auth-library";
 import type { SourceProfile, InterestProfile, YouTubeVideo, RecommendedVideo, RecommendationCategory } from "./types";
 
-const VERTEX_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash-002"];
+const VERTEX_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
+const VERTEX_REGION = "us-central1";
 
-function getVertexAI() {
+function getAuth() {
   const base64 = process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64;
   if (!base64) throw new Error("GOOGLE_APPLICATION_CREDENTIALS_BASE64 is not set");
   const credentials = JSON.parse(Buffer.from(base64, "base64").toString("utf-8"));
   const projectId = process.env.GCP_PROJECT_ID ?? (credentials.project_id as string);
-  if (!projectId) throw new Error("GCP_PROJECT_ID is not set");
-  return new VertexAI({
-    project: projectId,
-    location: "us-central1",
-    googleAuthOptions: { credentials },
-  });
+  if (!projectId) throw new Error("GCP_PROJECT_ID not found");
+  return { auth: new GoogleAuth({ credentials, scopes: ["https://www.googleapis.com/auth/cloud-platform"] }), projectId };
 }
 
 async function generate(prompt: string): Promise<string> {
-  const vertex = getVertexAI();
-  let lastError: Error = new Error("No models available");
+  const { auth, projectId } = getAuth();
+  const token = await auth.getAccessToken();
+  if (!token) throw new Error("Failed to get access token");
 
-  for (const modelName of VERTEX_MODELS) {
-    try {
-      const model = vertex.getGenerativeModel({ model: modelName });
-      const result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-      });
-      const text = result.response.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-      if (!text) throw new Error("Empty response");
-      return text;
-    } catch (e) {
-      lastError = e instanceof Error ? e : new Error(String(e));
+  let lastError: Error = new Error("No models available");
+  for (const model of VERTEX_MODELS) {
+    const url = `https://${VERTEX_REGION}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${VERTEX_REGION}/publishers/google/models/${model}:generateContent`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }] }),
+    });
+    if (res.ok) {
+      type R = { candidates: Array<{ content: { parts: Array<{ text: string }> } }> };
+      const data = (await res.json()) as R;
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+      if (text) return text;
+      lastError = new Error("Empty response");
+    } else {
+      const err = await res.text();
+      lastError = new Error(`Vertex AI ${res.status} (${model}): ${err.slice(0, 200)}`);
     }
   }
   throw lastError;
