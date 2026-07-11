@@ -24,6 +24,7 @@ export async function searchYouTubeVideos(queries: string[]): Promise<YouTubeVid
 
   const allVideos: YouTubeVideo[] = [];
   const seenIds = new Set<string>();
+  const seenChannels = new Set<string>();
 
   for (const query of queries.slice(0, 5)) {
     try {
@@ -45,8 +46,11 @@ export async function searchYouTubeVideos(queries: string[]): Promise<YouTubeVid
 
       for (const item of data.items ?? []) {
         const videoId = item.id.videoId;
+        const channelTitle = item.snippet.channelTitle;
         if (seenIds.has(videoId)) continue;
+        if (seenChannels.has(channelTitle)) continue;
         seenIds.add(videoId);
+        seenChannels.add(channelTitle);
 
         allVideos.push({
           videoId,
