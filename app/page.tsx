@@ -15,16 +15,50 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(0);
   const [error, setError] = useState("");
+  const [forceShowManual, setForceShowManual] = useState(false);
 
   async function runAnalysis(profile: SourceProfile) {
     setIsLoading(true);
     setError("");
+    setForceShowManual(false);
     setStep(0);
 
     try {
-      // Step 1: プロフィール読み取り
+      // Step 1: プロフィール読み取り（X APIで自動取得 or 手動投稿をそのまま使用）
       setStep(1);
-      await delay(600);
+
+      if (profile.source === "api") {
+        const xRes = await fetch("/api/x", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: profile.username }),
+        });
+        const xData = await xRes.json();
+
+        if (xData.fallback) {
+          // X APIが使えない → 手動入力フォームを展開して停止
+          setIsLoading(false);
+          setStep(0);
+          setForceShowManual(true);
+          setError(
+            xData.reason === "no_token"
+              ? "X APIキーが設定されていません。投稿テキストを手動で貼り付けてください。"
+              : `X APIエラー：${xData.message ?? "取得できませんでした。"}投稿テキストを手動で貼り付けてください。`
+          );
+          return;
+        }
+
+        // X APIで取得成功 → profileを更新
+        profile = {
+          ...profile,
+          displayName: xData.profile.displayName,
+          bio: xData.profile.bio,
+          posts: xData.profile.posts,
+          source: "api",
+        };
+      }
+
+      await delay(400);
 
       // Step 2: 関心テーマ抽出
       setStep(2);
@@ -210,13 +244,12 @@ export default function HomePage() {
 
                 {/* Input Form */}
                 <div className="mx-auto max-w-lg space-y-6">
-                  <AccountInputForm onSubmit={runAnalysis} isLoading={isLoading} />
-
-                  {error && (
-                    <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
-                      {error}
-                    </p>
-                  )}
+                  <AccountInputForm
+                    onSubmit={runAnalysis}
+                    isLoading={isLoading}
+                    forceShowManual={forceShowManual}
+                    externalError={error}
+                  />
 
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center">

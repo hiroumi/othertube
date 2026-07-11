@@ -7,16 +7,24 @@ import type { SourceProfile } from "@/lib/types";
 interface AccountInputFormProps {
   onSubmit: (profile: SourceProfile) => void;
   isLoading: boolean;
+  forceShowManual?: boolean;
+  externalError?: string;
 }
 
-export default function AccountInputForm({ onSubmit, isLoading }: AccountInputFormProps) {
+export default function AccountInputForm({
+  onSubmit,
+  isLoading,
+  forceShowManual = false,
+  externalError = "",
+}: AccountInputFormProps) {
   const [username, setUsername] = useState("");
   const [posts, setPosts] = useState("");
-  const [showManual, setShowManual] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
   const [error, setError] = useState("");
 
+  const showManual = manualOpen || forceShowManual;
+
   function parseUsername(raw: string): string {
-    // https://x.com/username or https://twitter.com/username or @username or plain username
     const urlMatch = raw.match(/(?:x\.com|twitter\.com)\/([A-Za-z0-9_]+)/);
     if (urlMatch) return urlMatch[1];
     return raw.replace(/^@/, "").trim();
@@ -26,33 +34,28 @@ export default function AccountInputForm({ onSubmit, isLoading }: AccountInputFo
     e.preventDefault();
     setError("");
 
+    const parsedUsername = parseUsername(username);
     const postLines = posts
       .split("\n")
       .map((l) => l.trim())
       .filter(Boolean);
 
-    if (!username.trim() && postLines.length === 0) {
-      setError("ユーザー名または投稿テキストを入力してください。");
-      return;
-    }
-
-    const parsedUsername = parseUsername(username) || "unknown_user";
-
-    if (postLines.length === 0 && !showManual) {
-      setShowManual(true);
-      setError("投稿テキストを貼り付けてください。Xの投稿を5〜20件ほど入力してください。");
+    if (!parsedUsername) {
+      setError("XアカウントのURLまたはユーザー名を入力してください。");
       return;
     }
 
     const profile: SourceProfile = {
       username: parsedUsername,
       displayName: parsedUsername,
-      posts: postLines.length > 0 ? postLines : [`@${parsedUsername}のプロフィール分析`],
-      source: "manual",
+      posts: postLines,
+      source: postLines.length > 0 ? "manual" : "api",
     };
 
     onSubmit(profile);
   }
+
+  const displayError = error || externalError;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -70,11 +73,11 @@ export default function AccountInputForm({ onSubmit, isLoading }: AccountInputFo
 
       <button
         type="button"
-        onClick={() => setShowManual(!showManual)}
+        onClick={() => setManualOpen(!manualOpen)}
         className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
       >
         {showManual ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-        投稿テキストを貼り付けて分析する（X APIなしで利用可能）
+        投稿テキストを手動で貼り付ける（X APIが使えない場合）
       </button>
 
       {showManual && (
@@ -93,8 +96,8 @@ export default function AccountInputForm({ onSubmit, isLoading }: AccountInputFo
         </div>
       )}
 
-      {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+      {displayError && (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{displayError}</p>
       )}
 
       <button
