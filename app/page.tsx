@@ -140,7 +140,12 @@ export default function HomePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ queries: searchQueries, language: interestProfile.language }),
       });
-      const { videos: rawVideos, fallback } = await ytRes.json();
+      const ytData = await ytRes.json();
+      const { videos: rawVideos, fallback, debug: ytDebug } = ytData;
+
+      if (ytDebug?.includes("429") || ytDebug?.includes("Quota exceeded")) {
+        throw new Error("YouTube APIの1日あたりのクォータを超過しました。明日（日本時間16〜17時以降）に再度お試しください。");
+      }
 
       setStep(5);
       let recommendations;
