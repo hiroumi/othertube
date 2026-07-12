@@ -40,52 +40,60 @@ export async function searchYouTubeVideos(
   const lang = options?.language ?? "ja";
   const regionCode = LANGUAGE_TO_REGION[lang];
 
-  const allVideos: YouTubeVideo[] = [];
   const seenIds = new Set<string>();
   const seenChannels = new Set<string>();
 
-  for (const query of queries.slice(0, 5)) {
-    try {
-      const url = new URL("https://www.googleapis.com/youtube/v3/search");
-      url.searchParams.set("part", "snippet");
-      url.searchParams.set("q", query);
-      url.searchParams.set("type", "video");
-      url.searchParams.set("maxResults", "10");
-      url.searchParams.set("relevanceLanguage", lang);
-      if (regionCode) url.searchParams.set("regionCode", regionCode);
-      url.searchParams.set("key", apiKey);
+  const results = await Promise.all(
+    queries.slice(0, 5).map(async (query) => {
+      try {
+        const url = new URL("https://www.googleapis.com/youtube/v3/search");
+        url.searchParams.set("part", "snippet");
+        url.searchParams.set("q", query);
+        url.searchParams.set("type", "video");
+        url.searchParams.set("maxResults", "10");
+        url.searchParams.set("relevanceLanguage", lang);
+        if (regionCode) url.searchParams.set("regionCode", regionCode);
+        url.searchParams.set("key", apiKey);
 
-      const res = await fetch(url.toString());
-      const data: YouTubeApiResponse = await res.json();
+        const res = await fetch(url.toString());
+        const data: YouTubeApiResponse = await res.json();
 
-      if (!res.ok || data.error) {
-        throw new Error(`YouTube API ${res.status}: ${data.error?.message ?? JSON.stringify(data).slice(0, 100)}`);
+        if (!res.ok || data.error) {
+          throw new Error(`YouTube API ${res.status}: ${data.error?.message ?? JSON.stringify(data).slice(0, 100)}`);
+        }
+
+        return data.items ?? [];
+      } catch (err) {
+        console.error(`Failed to search YouTube for query "${query}":`, err);
+        return [];
       }
+    })
+  );
 
-      for (const item of data.items ?? []) {
-        const videoId = item.id.videoId;
-        const channelTitle = item.snippet.channelTitle;
-        if (seenIds.has(videoId)) continue;
-        if (seenChannels.has(channelTitle)) continue;
-        seenIds.add(videoId);
-        seenChannels.add(channelTitle);
+  const allVideos: YouTubeVideo[] = [];
 
-        allVideos.push({
-          videoId,
-          title: item.snippet.title,
-          description: item.snippet.description,
-          thumbnail:
-            item.snippet.thumbnails.medium?.url ??
-            item.snippet.thumbnails.default?.url ??
-            `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
-          channelTitle: item.snippet.channelTitle,
-          channelId: item.snippet.channelId,
-          publishedAt: item.snippet.publishedAt,
-          url: `https://www.youtube.com/watch?v=${videoId}`,
-        });
-      }
-    } catch (err) {
-      console.error(`Failed to search YouTube for query "${query}":`, err);
+  for (const items of results) {
+    for (const item of items) {
+      const videoId = item.id.videoId;
+      const channelTitle = item.snippet.channelTitle;
+      if (seenIds.has(videoId)) continue;
+      if (seenChannels.has(channelTitle)) continue;
+      seenIds.add(videoId);
+      seenChannels.add(channelTitle);
+
+      allVideos.push({
+        videoId,
+        title: item.snippet.title,
+        description: item.snippet.description,
+        thumbnail:
+          item.snippet.thumbnails.medium?.url ??
+          item.snippet.thumbnails.default?.url ??
+          `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+        channelTitle: item.snippet.channelTitle,
+        channelId: item.snippet.channelId,
+        publishedAt: item.snippet.publishedAt,
+        url: `https://www.youtube.com/watch?v=${videoId}`,
+      });
     }
   }
 
