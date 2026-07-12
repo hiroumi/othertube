@@ -169,7 +169,6 @@ export default function HomePage() {
       }
 
       setStep(6);
-      await delay(300);
 
       const result: AnalysisResult = {
         sourceProfile: profile,
